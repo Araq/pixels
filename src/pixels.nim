@@ -47,24 +47,44 @@ template sdlFailIf(condition: typed, reason: string) =
 
 
 type
-  Color* = distinct uint32
+  Color* = distinct int
 
 const
-  White = 0xffffff
-  Orange = 0xFFA500
-  Blue = 0x00FFFF
-  Red = 0xFF0000
-  Yellow = 0xFFFF00
-  Pink = 0xFF00FF
-  Gray = 0x808080
-  Green = 0x44FF44
-  Deeppink = 0xFF1493
-
+  White* = Color 0xffffff
+  Orange* = Color 0xFFA500
+  Blue* = Color 0x00FFFF
+  Red* = Color 0xFF0000
+  Yellow* = Color 0xFFFF00
+  Pink* = Color 0xFF00FF
+  Gray* = Color 0x808080
+  Green* = Color 0x44FF44
+  Deeppink* = Color 0xFF1493
 
 var
   window: WindowPtr
   renderer: RendererPtr
   font: FontPtr
+
+proc toSdlColor(x: Color): sdl2.Color {.inline.} =
+  let x = x.int
+  result = color(x shr 16 and 0xff, x shr 8 and 0xff, x and 0xff, 0)
+
+proc putPixel*(x, y: int; col: Color) =
+  renderer.setDrawColor toSdlColor(col)
+  renderer.drawPoint(x.cint, y.cint)
+  #var r = rect(cint(x), cint(y), cint(10), cint(10))
+  #renderer.fillRect(r)
+
+proc drawText*(x, y: int; text: string; size: int; color: Color) =
+  let surface = ttf.renderTextSolid(font, text, toSdlColor color)
+  let texture = renderer.createTextureFromSurface(surface)
+  var d: Rect
+  d.x = 1
+  d.y = cint y
+  queryTexture(texture, nil, nil, addr(d.w), addr(d.h))
+  renderer.copy texture, nil, addr d
+  surface.freeSurface
+  texture.destroy
 
 proc fontByName(name: string; size: int): FontPtr =
   result = openFont(name & ".ttf", size.cint)
@@ -103,6 +123,7 @@ proc setup() =
   sdlFailIf font.isNil: "font could not be created"
 
 proc waitLoop() =
+  renderer.present()
   var keepRunning = true
   while keepRunning:
     var event = defaultEvent
@@ -117,19 +138,9 @@ proc waitLoop() =
 
 setup()
 
+for i in 0..80:
+  putPixel 80, 80+i, Yellow
+
+drawtext 80, 800, "Hello World", 15, Yellow
+
 addQuitProc(proc () {.noconv.} = waitLoop())
-
-when false:
-  import sdl2
-
-  proc putPixel*(x, y: int; col: Color) = discard
-
-  # don't make the Window disappear:
-  addQuitProc(proc () =
-    while true:
-      discard
-  )
-
-  when isMainModule:
-    discard
-

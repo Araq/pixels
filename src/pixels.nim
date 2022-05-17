@@ -45,22 +45,25 @@ proc putPixel*(x, y: int; col: Color = White) =
   #renderer.fillRect(r)
 
 proc fontByName(name: string; size: int): FontPtr =
-  result = openFont(name & ".ttf", size.cint)
+  result = openFont(cstring(name & ".ttf"), size.cint)
   if result.isNil:
     when defined(windows):
       const location = "C:\\Windows\\Fonts\\"
     elif defined(macosx):
       const location = r"/Library/Fonts/"
     elif defined(linux):
-      const location = r"/usr/share/fonts/truetype/"
+      const location = r"/usr/share/fonts/TTF/"
     elif defined(bsd):
       const location = "/usr/local/lib/X11/fonts/TrueType/"
     else:
       const location = ""
-    result = openFont(location & name & ".ttf", size.cint)
+    result = openFont(cstring(location & name & ".ttf"), size.cint)
 
 proc drawText*(x, y: int; text: string; size: int; color: Color = White) =
-  var font = fontByName(when defined(osx): "Arial Unicode" else: "Arial", size)
+  var font = fontByName(when defined(osx): "Arial Unicode"
+                        elif defined(linux): "FiraSans-Regular"
+                        else: "Arial",
+                        size)
   sdlFailIf font.isNil: "font could not be created"
 
   let surface = ttf.renderTextSolid(font, text, toSdlColor color)
@@ -123,3 +126,4 @@ when isMainModule:
   drawtext 80, 80, "Hello World", 35, Gold
 
 addQuitProc(proc () {.noconv.} = waitLoop())
+

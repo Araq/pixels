@@ -3,40 +3,8 @@
 import sdl2, sdl2/ttf
 
 const
-  WindowWidth = 640
-  WindowHeight = 480
-
-  TextWidth = 128
-  TextHeight = 15
-
-when false:
-  proc draw(renderer: RendererPtr, paddle: Paddle) =
-    renderer.setDrawColor 255, 255, 255, 255 # white
-    var r = rect(
-      cint(paddle.x), cint(paddle.y),
-      cint(PaddleWidth), cint(PaddleHeight)
-    )
-    renderer.fillRect(r)
-
-  proc drawScores(
-    renderer: RendererPtr, font: FontPtr, scores: tuple[player: uint, opponent: uint]
-  ) =
-    let
-      color = color(255, 255, 255, 0)
-      text = $scores.player & " : " & $scores.opponent
-      surface = ttf.renderTextSolid(font, text, color)
-      texture = renderer.createTextureFromSurface(surface)
-
-    surface.freeSurface
-    defer: texture.destroy
-
-    var r = rect(
-      (WindowWidth - TextWidth) div 2,
-      0,
-      TextWidth,
-      TextHeight
-    )
-    renderer.copy texture, nil, addr r
+  WindowWidth = 1024
+  WindowHeight = 768
 
 type SDLException = object of Defect
 
@@ -51,6 +19,8 @@ type
 
 const
   White* = Color 0xffffff
+  Black* = Color 0
+  Gold* = Color 0xffd700
   Orange* = Color 0xFFA500
   Blue* = Color 0x00FFFF
   Red* = Color 0xFF0000
@@ -63,28 +33,16 @@ const
 var
   window: WindowPtr
   renderer: RendererPtr
-  font: FontPtr
 
 proc toSdlColor(x: Color): sdl2.Color {.inline.} =
   let x = x.int
   result = color(x shr 16 and 0xff, x shr 8 and 0xff, x and 0xff, 0)
 
-proc putPixel*(x, y: int; col: Color) =
+proc putPixel*(x, y: int; col: Color = White) =
   renderer.setDrawColor toSdlColor(col)
   renderer.drawPoint(x.cint, y.cint)
   #var r = rect(cint(x), cint(y), cint(10), cint(10))
   #renderer.fillRect(r)
-
-proc drawText*(x, y: int; text: string; size: int; color: Color) =
-  let surface = ttf.renderTextSolid(font, text, toSdlColor color)
-  let texture = renderer.createTextureFromSurface(surface)
-  var d: Rect
-  d.x = 1
-  d.y = cint y
-  queryTexture(texture, nil, nil, addr(d.w), addr(d.h))
-  renderer.copy texture, nil, addr d
-  surface.freeSurface
-  texture.destroy
 
 proc fontByName(name: string; size: int): FontPtr =
   result = openFont(name & ".ttf", size.cint)
@@ -96,10 +54,25 @@ proc fontByName(name: string; size: int): FontPtr =
     elif defined(linux):
       const location = r"/usr/share/fonts/truetype/"
     elif defined(bsd):
-      const location = "/usr/local/lib/X11/fonts/TrueType"
+      const location = "/usr/local/lib/X11/fonts/TrueType/"
     else:
       const location = ""
     result = openFont(location & name & ".ttf", size.cint)
+
+proc drawText*(x, y: int; text: string; size: int; color: Color = White) =
+  var font = fontByName(when defined(osx): "Arial Unicode" else: "Arial", size)
+  sdlFailIf font.isNil: "font could not be created"
+
+  let surface = ttf.renderTextSolid(font, text, toSdlColor color)
+  let texture = renderer.createTextureFromSurface(surface)
+  var d: Rect
+  d.x = 1
+  d.y = cint y
+  queryTexture(texture, nil, nil, addr(d.w), addr(d.h))
+  renderer.copy texture, nil, addr d
+  surface.freeSurface
+  texture.destroy
+  close font
 
 proc setup() =
   sdlFailIf(not sdl2.init(INIT_VIDEO or INIT_EVENTS)): "SDL2 initialization failed"
@@ -115,12 +88,13 @@ proc setup() =
   renderer = createRenderer(
     window = window,
     index = -1,
-    flags = Renderer_Accelerated or Renderer_PresentVsync or Renderer_TargetTexture
+    flags = Renderer_TargetTexture
   )
+  # Renderer_Accelerated or Renderer_PresentVsync or
   sdlFailIf renderer.isNil: "renderer could not be created"
   sdlFailIf(not ttfInit()): "SDL_TTF initialization failed"
-  font = fontByName(when defined(osx): "Arial Unicode" else: "Arial", TextHeight)
-  sdlFailIf font.isNil: "font could not be created"
+  renderer.setDrawColor toSdlColor(Color 0)
+  clear(renderer)
 
 proc waitLoop() =
   renderer.present()
@@ -131,6 +105,10 @@ proc waitLoop() =
       if event.kind == QuitEvent:
         keepRunning = false
         break
+
+    #present(renderer)
+    delay(20)
+
   ttfQuit()
   renderer.destroy()
   window.destroy()
@@ -138,9 +116,10 @@ proc waitLoop() =
 
 setup()
 
-for i in 0..80:
-  putPixel 80, 80+i, Yellow
+when isMainModule:
+  for i in 0..80:
+    putPixel 80, 80+i, Yellow
 
-drawtext 80, 800, "Hello World", 15, Yellow
+  drawtext 80, 80, "Hello World", 35, Gold
 
 addQuitProc(proc () {.noconv.} = waitLoop())

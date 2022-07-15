@@ -66,7 +66,7 @@ proc drawText*(x, y: int; text: string; size: int; color: Color = White) =
                         size)
   sdlFailIf font.isNil: "font could not be created"
 
-  let surface = ttf.renderTextSolid(font, text, toSdlColor color)
+  let surface = ttf.renderUnicodeSolid(font, cast[ptr uint16](text.newWideCString), toSdlColor color)
   let texture = renderer.createTextureFromSurface(surface)
   var d: Rect
   d.x = 1

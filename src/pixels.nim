@@ -69,7 +69,7 @@ proc drawText*(x, y: int; text: string; size: int; color: Color = White) =
   let surface = ttf.renderTextSolid(font, text, toSdlColor color)
   let texture = renderer.createTextureFromSurface(surface)
   var d: Rect
-  d.x = 1
+  d.x = cint x
   d.y = cint y
   queryTexture(texture, nil, nil, addr(d.w), addr(d.h))
   renderer.copy texture, nil, addr d
